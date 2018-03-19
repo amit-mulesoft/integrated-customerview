@@ -1,0 +1,16 @@
+{
+    "inputMessageMetadata": {
+        "messagePayload": {
+            "connectorName": "#_custom_mule_metadata_type_#",
+            "typeId": "example_ploan_json"
+        }
+    },
+    "outputMessageMetadata": {
+        "messagePayload": {
+            "connectorName": "#_custom_mule_metadata_type_#",
+            "typeId": "example_loans_list"
+        }
+    },
+    "id": "229dab78-5d0a-4758-80bd-154be4ace64e",
+    "version": "5.2.0.0"
+}

@@ -1,0 +1,28 @@
+[
+  {
+    "customer":
+           { 
+          "individual": 
+          {
+	        "name":
+	          {
+              "firstName": "Kitty",
+              "lastName": "Mule"
+	          },
+	            "dob": "1980-12-01"
+        },
+        "loans": 
+        [
+          {
+          "loan":
+	        { 
+	          "loanType": "homeLoan",
+            "loanAmount": 200000,
+	          "startDate": "2012-12-01",
+	          "loanTerm": 30,
+	          "propertyAddress": "Unit 96/50 Wilkins St, Mawson"
+          }	 
+          }
+             ]     }
+  }
+]

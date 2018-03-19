@@ -1,0 +1,75 @@
+#%RAML 1.0
+baseUri: https://mocksvc.mulesoft.com/mocks/686ac6f8-b580-43b4-b7a8-a1df0d34f730 # 
+title: IntegratedCustomerView
+mediaType: application/json
+version: 1.0
+
+description: |
+  This API provides an integrated view of the customer, aggregation data from different source systems and presenting it in a consolidated manner.
+
+securitySchemes: 
+  -basic:
+    type: Basic Authentication
+
+types:
+  individual:
+    properties:
+      name: fullName
+      dob: date-only
+      
+  fullName:
+    properties: 
+      firstName: string
+      middleName: 
+        type: string
+        required: false
+      lastName: string
+
+  loan:
+    properties: 
+      loanType: 
+        enum: [homeLoan,personalLoan]
+      loanAmount: number
+      startDate: date-only
+      loanTerm: number
+      propertyAddress:
+        type: string
+        required: false
+
+  customer:
+    properties: 
+      individual: individual
+      loans: 
+        type: array
+        items: 
+          properties: 
+            loan: loan
+  
+  customers:
+    type: array
+    items:
+      properties:
+        customer: customer
+
+/v1:
+  /customer:
+      description: Get - Retrieve loans associated with a customer.
+      get:
+        securedBy: -basic
+        responses:
+          200:
+            body:
+              application/json:
+                type: customers 
+                example: !include examples/customerresponse.json 
+          401:
+          404:
+            body:
+              application/json:
+                example: {"message":"Page Not found"}
+          500:
+            body:
+              application/json:
+                example: {"message":"Internal server error"}
+
+      
