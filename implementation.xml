@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:validation="http://www.mulesoft.org/schema/mule/validation" xmlns:sfdc="http://www.mulesoft.org/schema/mule/sfdc" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/sfdc http://www.mulesoft.org/schema/mule/sfdc/current/mule-sfdc.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd">
+    <flow name="personalLoansFlow">
+        <http:request config-ref="HTTP_Request_Configuration" path="/personalloans" method="GET" doc:name="HTTP"/>
+        <dw:transform-message doc:name="Transform Message" metadata:id="229dab78-5d0a-4758-80bd-154be4ace64e">
+            <dw:input-payload mimeType="application/json"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+[{
+	customer: {
+		individual: {
+			name: {
+				firstName: payload.firstName,
+				lastName: payload.lastName
+			}
+		},
+		loans: [{
+			loan: {
+				loanType: "PersonalLoan",
+				loanAmount: payload.loanAmt
+			}
+		}]
+	}
+}]]]></dw:set-payload>
+        </dw:transform-message>
+        <catch-exception-strategy doc:name="REST Exception Strategy">
+            <logger message="#[exception.cause.?message or exception.cause]" level="ERROR" doc:name="Logger"/>
+        </catch-exception-strategy>
+    </flow>
+    <flow name="homeLoansFlow">
+        <sfdc:query config-ref="Salesforce__Basic_Authentication" query="dsql:SELECT Birthdate,Description,FirstName,LastName,MailingCity,MailingCountry,MailingPostalCode,MailingState,MailingStreet FROM Contact WHERE FirstName = '#[message.inboundProperties.'http.query.params'.firstName]' and
+LastName = '#[message.inboundProperties.'http.query.params'.lastName]' and
+BirthDate = #[message.inboundProperties.'http.query.params'.dob]" doc:name="Salesforce"/>
+
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>        <dw:transform-message doc:name="Transform Message" metadata:id="e5434fed-ef10-4ef6-a236-eee95444e9dd">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload map ((payload01 , indexOfPayload01) -> {
+	customer: {
+		individual: {
+			name: {
+				firstName: payload01.FirstName,
+				lastName: payload01.LastName
+			},
+			dob: payload01.Birthdate as :string
+		},
+		loans: [{
+			loan: {
+				loanType: "HomeLoan",
+				loanAmount: payload01.Description as :number,
+				loanTerm: 30,
+				startDate: "2017-07-07",
+				propertyAddress: payload01.MailingStreet ++ payload01.MailingCity++ payload01.MailingPostalCode
+			}
+		}]
+	}
+})]]></dw:set-payload>
+        </dw:transform-message>
+        <catch-exception-strategy doc:name="Salesforce Exception Strategy">
+            <logger level="INFO" doc:name="Logger"/>
+        </catch-exception-strategy>
+    </flow>
+    <flow name="getIntegratedDataFlow">
+        <scatter-gather doc:name="Scatter-Gather">
+            <flow-ref name="homeLoansFlow" doc:name="homeLoansFlowRef"/>
+            <flow-ref name="personalLoansFlow" doc:name="personalLoansFlowRef"/>
+        </scatter-gather>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+flatten payload]]></dw:set-payload>
+        </dw:transform-message>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+        <catch-exception-strategy doc:name="Catch All Exceptions">
+            <set-payload value="#[&quot;The request can not be processed, please contact administrator&quot;]  " doc:name="Set Payload"/>
+			<set-property propertyName="http.status" value="500" doc:name="Property"/>
+            <logger level="INFO" doc:name="Logger" message="#[exception.getStackTrace()]"/>
+        </catch-exception-strategy>
+    </flow>
+</mule>
